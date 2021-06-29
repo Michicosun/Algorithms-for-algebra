@@ -22,7 +22,117 @@
 
 using namespace std;
 
-const string mask = "yxzwqhrt";
+class Rational {
+public:
+    
+    int a, b;
+    
+    Rational() : a(0), b(1) {}
+    
+    Rational(int _a, int _b = 1) : a(_a), b(_b) {
+        int g = gcd(abs(a), abs(b));
+        a /= g; b /= g;
+        if (b < 0) a *= -1;
+        b = abs(b);
+    }
+    
+    
+    Rational operator- () const {
+        return Rational(-a, b);
+    }
+    
+    Rational operator+ (const Rational& other) const {
+        int na = a * other.b + other.a * b;
+        int nb = b * other.b;
+        int g = gcd(abs(na), abs(nb));
+        na /= g; nb /= g;
+        return Rational(na, nb);
+    }
+    
+    Rational operator- (const Rational& other) const {
+        return *this + (-other);
+    }
+    
+    Rational operator* (const Rational& other) const {
+        int na = a * other.a;
+        int nb = b * other.b;
+        int g = gcd(abs(na), abs(nb));
+        na /= g; nb /= g;
+        return Rational(na, nb);
+    }
+    
+    Rational operator/ (const Rational& other) const {
+        int na = a * other.b;
+        int nb = b * other.a;
+        int g = gcd(abs(na), abs(nb));
+        na /= g; nb /= g;
+        return Rational(na, nb);
+    }
+    
+    void operator+= (const Rational& other) {
+        *this = *this + other;
+    }
+    
+    void operator-= (const Rational& other) {
+        *this = *this - other;
+    }
+    
+    void operator*= (const Rational& other) {
+        *this = *this * other;
+    }
+    
+    void operator/= (const Rational& other) {
+        *this = *this / other;
+    }
+    
+    string to_string() const {
+        if (b == 1) return std::to_string(a);
+        else return std::to_string(a) + "/" + std::to_string(b);
+    }
+    
+    friend ostream& operator<< (ostream& out, const Rational& a) {
+        return out << a.to_string();
+    }
+    
+    friend istream& operator>> (istream& in, Rational& a) {
+        int f, s = 1; char c = ' ';
+        in >> f >> noskipws >> c >> skipws;
+        if (c == '/') in >> s;
+        a = Rational(f, s);
+        return in;
+    }
+    
+    bool operator >= (const Rational& other) const {
+        return a * other.b >= other.a * b;
+    }
+    
+    bool operator > (const Rational& other) const {
+        return a * other.b > other.a * b;
+    }
+    
+    bool operator <= (const Rational& other) const {
+        return a * other.b <= other.a * b;
+    }
+    
+    bool operator < (const Rational& other) const {
+        return a * other.b < other.a * b;
+    }
+    
+    bool operator== (const Rational& other) const {
+        return a == other.a && b == other.b;
+    }
+    
+    bool operator!= (const Rational& other) const {
+        return !(*this == other);
+    }
+    
+};
+
+Rational fabs(const Rational& a) {
+    return Rational(abs(a.a), abs(a.b));
+}
+
+const string mask = "xyzwqhrt";
 
 bool isDigit(char c) {
     return '0' <= c && c <= '9';
@@ -48,10 +158,10 @@ int readNum(const string& s, int& i) {
 class Monom {
 public:
     
-    double a;
+    Rational a;
     vector<int> x;
     
-    Monom (int a = 1, vector<int> x = {}) : a(a), x(x) {}
+    Monom (Rational a = 1, vector<int> x = {}) : a(a), x(x) {}
     
     Monom (const Monom& other) : a(other.a), x(other.x) {}
     
@@ -142,15 +252,17 @@ public:
     
     friend ostream& operator<< (ostream& out, const Monom& a) {
         if (a.getSign() == -1) out << " - ";
-        if (fabs(a.a) != 1) out << fabs(a.a);
-        for (int i = 0; i < a.size(); ++i) {
-            if (a[i] == 0) continue;
-            out << mask[i];
-            if (a[i] > 1) {
-                if (a[i] >= 10) out << "^{" << a[i] << "}";
-                else out << "^" << a[i];
+        if (a.x.size() > 0) {
+            if (fabs(a.a) != 1) out << fabs(a.a);
+            for (int i = 0; i < a.size(); ++i) {
+                if (a[i] == 0) continue;
+                out << mask[i];
+                if (a[i] > 1) {
+                    if (a[i] >= 10) out << "^{" << a[i] << "}";
+                    else out << "^" << a[i];
+                }
             }
-        }
+        } else out << fabs(a.a);
         return out;
     }
     
@@ -225,7 +337,7 @@ public:
                 return newP;
             }
         }
-        newP.a.push_back(q * (-1));
+        newP.a.push_back(q * Rational(-1));
         newP.fix();
         return newP;
     }
@@ -271,6 +383,20 @@ public:
         return *this;
     }
     
+    Polynom operator* (const Polynom& other) const {
+        Polynom newP;
+        for (int i = 0; i < other.size(); ++i) {
+            for (int j = 0; j < size(); ++j) newP += other[i] * a[j];
+        }
+        newP.fix();
+        return newP;
+    }
+    
+    Polynom operator*= (const Polynom& other) {
+        *this = *this * other;
+        return *this;
+    }
+    
     Monom& operator[] (int ind) {
         return a[ind];
     }
@@ -307,7 +433,7 @@ public:
         Monom q;
         int mn = 1;
         while (ss >> q) {
-            p.a.push_back(q * mn);
+            p.a.push_back(q * Rational(mn));
             char c; ss >> c;
             if (c == '-') mn = -1;
             else mn = 1;
@@ -351,19 +477,19 @@ bool check(const Monom& a, const Monom& b) {
     return 1;
 }
 
-bool oneReduction(Polynom& a, const Polynom& b, int ind = 1) {
+bool oneReduction(Polynom& a, const Polynom& b, int ind = 0) {
     for (int i = 0; i < a.size(); ++i) {
         if (check(a[i], b.getL())) {
             auto m = a[i] / b.getL();
             a -= b * m;
-            cout << "\\xrightarrow[" << m << "]{f_" + to_string(ind) + "} " << a << " ";
+            if (ind > 0) cout << "\\xrightarrow[" << m << "]{f_" + to_string(ind) + "} " << a << " ";
             return 1;
         }
     }
     return 0;
 }
 
-bool reduction(Polynom& a, const Polynom& b, int ind = 1) {
+bool reduction(Polynom& a, const Polynom& b, int ind = 0) {
     int cnt = 0;
     while (oneReduction(a, b, ind)) ++cnt;
     return cnt > 0;
@@ -409,11 +535,20 @@ void findBasis(vector<Polynom>& a) {
     }
 }
 
+Polynom Pow(const Polynom& a, int k, const Polynom& mod) {
+    Polynom ans = a;
+    for (int i = 1; i < k; ++i) ans *= a;
+    reduction(ans, mod);
+    return ans;
+}
+
 signed main() {
-    int n; cin >> n;
-    vector<Polynom> a(n);
-    for (int i = 0; i < n; ++i) cin >> a[i];
-    findBasis(a);
-    for (auto i : a) cout << i << ", ";
+    Polynom mod, a; cin >> mod >> a;
+    cout << mod << " | " << a << "\n\n";
+    for (int i = 1; i <= 8; ++i) {
+        cout << Pow(a, i, mod);
+        if (i < 8) cout << " \\to ";
+        else cout << "\n";
+    }
     return 0;
 }
